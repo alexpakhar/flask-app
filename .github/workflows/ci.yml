@@ -1,27 +1,36 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
 
+    # Эти права необходимы для публикации в GHCR
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Build Docker image
-      run: |
-        docker build -t flask-app-web:test .
-        echo "Образ собран успешно"
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Test image
-      run: |
-        docker run --rm flask-app-web:test python -c "print('Приложение работает')"
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          # Имя образа: ghcr.io/ТВОЙ_НИК/flask-app:latest
+          tags: ghcr.io/${{ github.repository }}:latest
